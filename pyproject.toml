@@ -10,5 +10,8 @@ requires-python = ">=3.9"
 readme = "README.md"
 license = { text = "MIT" }
 
+[project.scripts]
+gitbloom = "gitbloom.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["gitbloom*"]

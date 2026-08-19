@@ -15,28 +15,40 @@ removes, browner when it's mostly deletions). Flower hue is derived from the
 commit hash, so two commits with identical stats still look like different
 plants.
 
-This milestone adds the garden composer: a pure function that lines every
-commit's plant up along one ground line into a single `garden.svg` —
-oldest commit on the left, newest on the right, so the garden grows to the
-right as the repo grows. Layout is deliberately simple and fully
-deterministic (fixed, evenly-spaced positions; only each plant's own shape
-depends on its commit), so the same commit history always produces the exact
-same `garden.svg` bytes. A later milestone wires this up as a `post-commit`
-hook so the file regenerates itself.
+The garden composer lines every commit's plant up along one ground line into
+a single `garden.svg` — oldest commit on the left, newest on the right, so
+the garden grows to the right as the repo grows. Layout is deliberately
+simple and fully deterministic (fixed, evenly-spaced positions; only each
+plant's own shape depends on its commit), so the same commit history always
+produces the exact same `garden.svg` bytes.
+
+This milestone adds the hook installer: `gitbloom install` adds a
+`post-commit` hook to a repo that reruns the extractor + composer after every
+commit and rewrites `garden.svg` at the top of the working tree, so the file
+stays in sync with history automatically. `gitbloom uninstall` removes it.
+The installer never overwrites or deletes a `post-commit` hook it did not
+create itself — it refuses instead, unless `--force` is passed.
 
 ## Install
 
 Requires Python 3.9+ and `git` on `PATH`. No third-party dependencies —
-everything used (`subprocess`, `dataclasses`, `json`) is in the standard
-library, which is enough to parse `git log` output safely.
+everything used (`subprocess`, `dataclasses`, `argparse`, `json`) is in the
+standard library, which is enough to parse `git log` output, render SVG, and
+manage a git hook safely.
 
 ```bash
 git clone <this-repo-url>
 cd gitbloom
+pip install -e .
 ```
 
-Nothing to build or `pip install` for this milestone; the package is used
-directly from source.
+`pip install -e .` registers the `gitbloom` command (via the `[project.scripts]`
+entry point in `pyproject.toml`) and makes the package importable as
+`python3 -m gitbloom...` from anywhere — the installed hook itself runs
+`python3 -m gitbloom.build --quiet`, so it needs the package importable, not
+just the `gitbloom` command on `PATH`. Without installing, everything is
+still usable directly from a checkout by running `python3 -m gitbloom.cli ...`
+with this directory's parent on `PYTHONPATH`.
 
 ## Usage
 
@@ -100,6 +112,31 @@ renders a valid (plant-less) garden, so a freshly-initialised repo gets a
 usable `garden.svg`. This is verified by golden-file tests in
 `tests/test_garden.py` against checked-in `tests/golden_garden/*.svg`
 fixtures, covering zero, one, and several commits.
+
+Installing the hook so `garden.svg` regenerates on every commit:
+
+```bash
+cd /path/to/some/other/repo
+gitbloom install          # adds .git/hooks/post-commit
+git commit --allow-empty -m "test the hook"
+cat garden.svg             # regenerated automatically
+gitbloom uninstall        # removes the hook again
+```
+
+`gitbloom install` refuses to overwrite a `post-commit` hook it did not
+create itself (pass `--force` to replace it anyway), and `gitbloom uninstall`
+likewise refuses to delete a hook it does not recognise — both operations are
+idempotent and only ever touch a hook carrying gitbloom's own marker comment.
+To regenerate `garden.svg` once by hand, without installing anything:
+
+```bash
+gitbloom build              # writes garden.svg at the repo root, then exits
+```
+
+`gitbloom install`/`uninstall`/`build` all accept an optional repo path
+argument (defaulting to `.`) and are covered by `tests/test_install.py`,
+`tests/test_build.py` and `tests/test_cli.py`, which install and uninstall
+hooks and run full builds against real throwaway git repositories.
 
 ## Status
 
