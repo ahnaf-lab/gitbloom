@@ -17,6 +17,11 @@ from .install import (
     install_hook,
     uninstall_hook,
 )
+from .render import (
+    NotAGitRepoError as RenderNotAGitRepoError,
+    STATUS_MESSAGES as _README_STATUS_MESSAGES,
+    render,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -43,6 +48,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     build_p.add_argument("repo", nargs="?", default=".")
     build_p.add_argument("--quiet", "-q", action="store_true")
+
+    render_p = subparsers.add_parser(
+        "render",
+        help="regenerate garden.svg and sync any <!-- gitbloom:start/end --> "
+        "block in README.md",
+    )
+    render_p.add_argument("repo", nargs="?", default=".")
+    render_p.add_argument("--quiet", "-q", action="store_true")
+    render_p.add_argument(
+        "--no-readme",
+        action="store_true",
+        help="only write garden.svg; do not touch README.md",
+    )
 
     return parser
 
@@ -77,6 +95,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if not args.quiet:
             print(f"wrote {out_path}")
+        return 0
+
+    if args.command == "render":
+        try:
+            result = render(args.repo, update_readme=not args.no_readme)
+        except (RenderNotAGitRepoError, GitLogError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if not args.quiet:
+            print(f"wrote {result.garden_path}")
+            print(_README_STATUS_MESSAGES[result.readme.status])
         return 0
 
     return 2  # unreachable: argparse enforces a valid subcommand

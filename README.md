@@ -22,12 +22,21 @@ simple and fully deterministic (fixed, evenly-spaced positions; only each
 plant's own shape depends on its commit), so the same commit history always
 produces the exact same `garden.svg` bytes.
 
-This milestone adds the hook installer: `gitbloom install` adds a
-`post-commit` hook to a repo that reruns the extractor + composer after every
-commit and rewrites `garden.svg` at the top of the working tree, so the file
-stays in sync with history automatically. `gitbloom uninstall` removes it.
-The installer never overwrites or deletes a `post-commit` hook it did not
-create itself — it refuses instead, unless `--force` is passed.
+The hook installer adds a `post-commit` hook to a repo that reruns the
+extractor + composer after every commit and rewrites `garden.svg` at the top
+of the working tree, so the file stays in sync with history automatically.
+`gitbloom install` adds it, `gitbloom uninstall` removes it; the installer
+never overwrites or deletes a `post-commit` hook it did not create itself —
+it refuses instead, unless `--force` is passed.
+
+This milestone adds `gitbloom render`, the command a human (or CI) runs to
+regenerate `garden.svg` **and** keep a preview of it embedded in `README.md`
+in sync (see "Embedding the garden in your own README" below). It also adds
+`examples/garden.svg`, a deterministic example built from a small fixture
+repo, so this README can show what a garden looks like without depending on
+gitbloom's own (still tiny) commit history:
+
+![example garden](examples/garden.svg)
 
 ## Install
 
@@ -137,6 +146,50 @@ gitbloom build              # writes garden.svg at the repo root, then exits
 argument (defaulting to `.`) and are covered by `tests/test_install.py`,
 `tests/test_build.py` and `tests/test_cli.py`, which install and uninstall
 hooks and run full builds against real throwaway git repositories.
+
+### Embedding the garden in your own README
+
+`gitbloom render` does everything `gitbloom build` does — regenerate
+`garden.svg` from the current commit history — and then also looks for a
+marker block in that repo's own `README.md`:
+
+```markdown
+<!-- gitbloom:start -->
+<!-- gitbloom:end -->
+```
+
+Paste those two HTML comments anywhere in your README once. Every time you
+run `gitbloom render` after that, whatever sits between them is replaced
+with `![garden](garden.svg)`; everything else in the file, including the
+markers themselves, is left untouched. Pass `--no-readme` to only rebuild
+`garden.svg` without touching `README.md`:
+
+```bash
+gitbloom render              # rebuilds garden.svg, syncs README.md if it has markers
+gitbloom render --no-readme  # rebuilds garden.svg only
+```
+
+`sync_readme()` in `gitbloom/readme.py` is safe to call on a README that has
+no markers or does not exist yet — it reports that nothing needed doing
+rather than raising, so `gitbloom render` always succeeds at writing
+`garden.svg` regardless of whether a project has opted in to the embed. This
+is covered by `tests/test_readme.py` and `tests/test_render.py`.
+
+### Example
+
+`examples/garden.svg` (embedded above) is generated from a small, fully
+deterministic fixture repo — fixed file contents, author identity and commit
+dates, so the commit hashes gitbloom's plant generator derives colour and
+shape from never change between runs or machines:
+
+```bash
+python3 examples/generate_example.py
+```
+
+`tests/test_examples.py` re-runs the same fixture and asserts the result
+still matches the checked-in SVG byte-for-byte, so a change to the
+extractor, plant generator or garden composer that would silently alter the
+example fails the test suite instead of the README quietly going stale.
 
 ## Status
 

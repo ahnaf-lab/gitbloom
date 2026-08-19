@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from gitbloom.cli import main
 from gitbloom.install import hook_path, is_installed
+from gitbloom.readme import END_MARKER, START_MARKER
 
 
 def _run(cmd, cwd):
@@ -45,6 +46,22 @@ class TestCli(unittest.TestCase):
         code = main(["build", self.repo, "--quiet"])
         self.assertEqual(code, 0)
         self.assertTrue(Path(self.repo, "garden.svg").exists())
+
+    def test_render_subcommand_writes_garden_svg(self):
+        code = main(["render", self.repo, "--quiet"])
+        self.assertEqual(code, 0)
+        self.assertTrue(Path(self.repo, "garden.svg").exists())
+
+    def test_render_subcommand_updates_readme_markers(self):
+        Path(self.repo, "README.md").write_text(f"{START_MARKER}\n{END_MARKER}\n")
+        code = main(["render", self.repo, "--quiet"])
+        self.assertEqual(code, 0)
+        self.assertIn("garden.svg", Path(self.repo, "README.md").read_text())
+
+    def test_render_subcommand_no_readme_flag_skips_readme(self):
+        Path(self.repo, "README.md").write_text(f"{START_MARKER}\n{END_MARKER}\n")
+        main(["render", self.repo, "--quiet", "--no-readme"])
+        self.assertNotIn("garden.svg", Path(self.repo, "README.md").read_text())
 
     def test_install_on_non_repo_returns_nonzero(self):
         with tempfile.TemporaryDirectory() as not_a_repo:

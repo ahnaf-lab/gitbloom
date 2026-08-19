@@ -5,6 +5,8 @@ from .extractor import CommitStats, GitLogError, get_commit_stats
 from .garden import compose_garden_svg
 from .install import HookConflictError, install_hook, is_installed, uninstall_hook
 from .plant import PlantParams, derive_plant_params, generate_plant_svg, render_plant_svg
+from .readme import SyncResult, SyncStatus, sync_readme
+from .render import RenderResult, render
 
 __all__ = [
     "CommitStats",
@@ -20,4 +22,9 @@ __all__ = [
     "uninstall_hook",
     "is_installed",
     "HookConflictError",
+    "SyncResult",
+    "SyncStatus",
+    "sync_readme",
+    "RenderResult",
+    "render",
 ]
