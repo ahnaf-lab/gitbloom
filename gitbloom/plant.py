@@ -179,8 +179,21 @@ def _render_flower(params: PlantParams) -> list[str]:
     return parts
 
 
-def render_plant_svg(params: PlantParams, commit_hash: str = "") -> str:
-    """Pure function: :class:`PlantParams` -> a standalone SVG document string."""
+def render_plant_svg(
+    params: PlantParams,
+    commit_hash: str = "",
+    x: int | None = None,
+    y: int | None = None,
+) -> str:
+    """Pure function: :class:`PlantParams` -> an SVG document string.
+
+    ``x``/``y``, when given, are emitted as attributes on the outer ``<svg>``
+    tag. That is meaningless for a standalone document but lets this same
+    element be nested inside a parent ``<svg>`` (as :mod:`gitbloom.garden`
+    does) and positioned there without any extra wrapper element. Omitting
+    them (the default) reproduces the exact standalone-document output the
+    golden-file tests in ``tests/test_plant.py`` pin.
+    """
 
     body_parts = [_render_stem(params)]
     body_parts.extend(_render_leaves(params))
@@ -188,9 +201,14 @@ def render_plant_svg(params: PlantParams, commit_hash: str = "") -> str:
     body = "".join(body_parts)
 
     label = commit_hash[:8] if commit_hash else "unknown"
+    position = ""
+    if x is not None:
+        position += f' x="{x}"'
+    if y is not None:
+        position += f' y="{y}"'
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" '
-        f'height="{CANVAS_HEIGHT}" viewBox="0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}" '
+        f'height="{CANVAS_HEIGHT}" viewBox="0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}"{position} '
         f'data-commit="{label}">{body}</svg>'
     )
 

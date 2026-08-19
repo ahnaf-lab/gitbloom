@@ -7,14 +7,22 @@ image that grows with the repo. Installs as a `post-commit` hook so
 
 The data layer is a safe extractor that turns `git log --numstat` into
 structured per-commit stats (files changed, insertions, deletions, message
-length). This milestone adds the plant generator: a pure function that maps
-those stats onto a single deterministic SVG "plant" — stem height from total
-churn, leaf count from files touched, petal count from message length, and
-leaf colour from the insertions/deletions ratio (greener when a commit adds
-more than it removes, browner when it's mostly deletions). Flower hue is
-derived from the commit hash, so two commits with identical stats still look
-like different plants. A later milestone composes many plants into one
-growing `garden.svg`.
+length). The plant generator is a pure function that maps those stats onto a
+single deterministic SVG "plant" — stem height from total churn, leaf count
+from files touched, petal count from message length, and leaf colour from
+the insertions/deletions ratio (greener when a commit adds more than it
+removes, browner when it's mostly deletions). Flower hue is derived from the
+commit hash, so two commits with identical stats still look like different
+plants.
+
+This milestone adds the garden composer: a pure function that lines every
+commit's plant up along one ground line into a single `garden.svg` —
+oldest commit on the left, newest on the right, so the garden grows to the
+right as the repo grows. Layout is deliberately simple and fully
+deterministic (fixed, evenly-spaced positions; only each plant's own shape
+depends on its commit), so the same commit history always produces the exact
+same `garden.svg` bytes. A later milestone wires this up as a `post-commit`
+hook so the file regenerates itself.
 
 ## Install
 
@@ -70,6 +78,28 @@ filesystem, or any random source — anything that needs to vary per commit
 instead. That determinism is verified by golden-file tests in
 `tests/test_plant.py`, which compare fixed sample commits against checked-in
 `tests/golden/*.svg` fixtures.
+
+Composing a whole repo's history into one garden:
+
+```python
+from gitbloom.extractor import get_commit_stats
+from gitbloom.garden import compose_garden_svg
+
+commits = get_commit_stats(".")  # oldest first
+svg = compose_garden_svg(commits)  # one standalone <svg>...</svg> garden
+
+with open("garden.svg", "w") as f:
+    f.write(svg)
+```
+
+`compose_garden_svg()` is a pure function too: it places each commit's plant
+at a fixed, evenly-spaced x-offset along one ground line (no stats-dependent
+positioning, no collision search), so the garden's width grows by a constant
+amount per commit and its height never changes. An empty commit list still
+renders a valid (plant-less) garden, so a freshly-initialised repo gets a
+usable `garden.svg`. This is verified by golden-file tests in
+`tests/test_garden.py` against checked-in `tests/golden_garden/*.svg`
+fixtures, covering zero, one, and several commits.
 
 ## Status
 
