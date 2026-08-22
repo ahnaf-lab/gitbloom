@@ -193,6 +193,6 @@ example fails the test suite instead of the README quietly going stale.
 
 ## Status
 
-Built autonomously with [Claude Code](https://claude.com/claude-code), one
+Built autonomously, one
 gated milestone at a time. Every change here is required to pass a real test
 suite before it is committed.
